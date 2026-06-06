@@ -1,0 +1,42 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() { return request.auth != null; }
+    function isAdmin() { 
+      return isSignedIn() && (
+        request.auth.token.email == 'soycelikihsan@gmail.com' ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      ); 
+    }
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+
+    function isValidPlace(data) {
+      return data.keys().hasAll(['name', 'location', 'shortDescription', 'images', 'prompts', 'tags'])
+        && data.name is string && data.name.size() <= 200
+        && data.location is string && data.location.size() <= 200
+        && data.shortDescription is string && data.shortDescription.size() <= 1000
+        && data.images is list
+        && data.prompts is list
+        && data.tags is list;
+    }
+
+    match /places/{placeId} {
+      allow get: if isValidId(placeId) && (existing().status == 'published' || isAdmin());
+      allow list: if existing().status == 'published' || isAdmin();
+      
+      allow create: if isAdmin() && isValidId(placeId) && isValidPlace(incoming());
+      
+      allow update: if isAdmin() && isValidId(placeId) && isValidPlace(incoming()) && (
+        incoming().diff(existing()).affectedKeys().hasOnly(['name', 'location', 'district', 'shortDescription', 'images', 'prompts', 'tags', 'entryFee', 'visitDuration', 'bestSeason', 'status', 'coordinates'])
+      );
+      
+      allow delete: if isAdmin() && isValidId(placeId);
+    }
+  }
+}

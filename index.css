@@ -1,0 +1,37 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom scrollbar hide */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Smooth scroll */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Aurora background for the app shell */
+.aurora-bg {
+  background-color: #000;
+  background-image:
+    radial-gradient(at 0% 0%, hsla(0, 0%, 10%, 1) 0, transparent 50%),
+    radial-gradient(at 50% 0%, hsla(0, 0%, 20%, 1) 0, transparent 50%),
+    radial-gradient(at 100% 0%, hsla(0, 0%, 10%, 1) 0, transparent 50%);
+}
+
+/* Masonry grid layout */
+.masonry-grid {
+  column-count: 2;
+  column-gap: 12px;
+}
+
+.masonry-item {
+  break-inside: avoid;
+  margin-bottom: 12px;
+}

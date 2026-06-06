@@ -1,0 +1,23 @@
+
+<!DOCTYPE html>
+<html lang="tr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Keşif | Hidden Gems</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:ital,wght@0,500;0,700;0,800;1,600&display=swap" rel="stylesheet">
+    <!-- Dark class is set by JS on load to avoid flash — see App.tsx useEffect -->
+    <script>
+      (function () {
+        var stored = localStorage.getItem('kesif_dark_mode');
+        if (stored !== 'false') {
+          document.documentElement.classList.add('dark');
+        }
+      })();
+    </script>
+  </head>
+  <body class="bg-[#111] dark:bg-[#050505] text-brand-black dark:text-white antialiased transition-colors duration-500 overflow-hidden flex items-center justify-center min-h-screen">
+    <div id="root" class="w-full h-full flex justify-center"></div>
+    <script type="module" src="/index.tsx"></script>
+  </body>
+</html>

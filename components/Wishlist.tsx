@@ -1,0 +1,161 @@
+
+import React, { useState, useMemo } from 'react';
+import { Place } from '../types';
+import { PlaceCard } from './PlaceCard';
+import { RouteFlow } from './RouteFlow';
+import { analytics } from '../services/analyticsService';
+import { getImageUrl, GENERIC_FALLBACK_IMAGE } from '../services/imageService';
+
+interface WishlistProps {
+  items: Place[];
+  onRemove: (id: string) => void;
+}
+
+export const Wishlist: React.FC<WishlistProps> = ({ items, onRemove }) => {
+  const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
+  
+  // Route Flow State
+  const [isRouteFlowOpen, setIsRouteFlowOpen] = useState(false);
+  const [routeCity, setRouteCity] = useState('');
+  const [routePlaces, setRoutePlaces] = useState<Place[]>([]);
+
+  // Lokasyon stringinden şehir ismini çeken yardımcı fonksiyon
+  const getCity = (location: string) => {
+    if (!location) return "Diğer";
+    return location.split(',')[0].trim();
+  };
+
+  // Mekanları şehirlere göre grupla
+  const groupedItems = useMemo(() => {
+    const groups: Record<string, Place[]> = {};
+    items.forEach(item => {
+      const city = getCity(item.location);
+      if (!groups[city]) groups[city] = [];
+      groups[city].push(item);
+    });
+    return groups;
+  }, [items]);
+
+  const sortedCities = useMemo(() => Object.keys(groupedItems).sort(), [groupedItems]);
+
+  const handleStartRouteFlow = (city: string, cityItems: Place[]) => {
+    if (cityItems.length === 0) return;
+    analytics.logEvent('route_generated', { placeCount: cityItems.length });
+    
+    // Filter out places without coordinates for safety
+    const validItems = cityItems.filter(p => p.coordinates);
+    if (validItems.length === 0) {
+      alert("Bu şehirdeki mekanların koordinat bilgisi eksik.");
+      return;
+    }
+
+    setRouteCity(city);
+    setRoutePlaces(validItems);
+    setIsRouteFlowOpen(true);
+  };
+
+  return (
+    <div className="bg-transparent min-h-full pb-32 pt-6 flex flex-col h-full relative overflow-y-auto no-scrollbar">
+      {/* Route Wizard Modal */}
+      <RouteFlow 
+        isOpen={isRouteFlowOpen} 
+        onClose={() => setIsRouteFlowOpen(false)} 
+        places={routePlaces} 
+        cityName={routeCity} 
+      />
+
+      {/* Başlık */}
+      <div className="px-6 mb-8">
+        <h2 className="font-serif text-4xl font-bold text-gray-900 dark:text-white tracking-tight">Koleksiyon</h2>
+        <p className="text-gray-500 dark:text-gray-400 text-[10px] font-black uppercase tracking-[0.2em] mt-2">
+          {items.length} Kayıtlı Mekan / {sortedCities.length} Bölge
+        </p>
+      </div>
+      
+      {items.length === 0 ? (
+        <div className="flex flex-col items-center justify-center flex-1 text-center px-10 opacity-40 py-20">
+          <div className="w-20 h-20 bg-gray-100 dark:bg-white/5 rounded-full flex items-center justify-center mb-6">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1} stroke="currentColor" className="w-9 h-9 text-gray-400 dark:text-white/30">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
+            </svg>
+          </div>
+          <p className="font-serif text-lg italic text-gray-900 dark:text-white">Seyahat listeniz boş görünüyor.</p>
+          <p className="text-[10px] text-gray-500 mt-2 uppercase tracking-widest leading-loose">Keşfetmeye başla ve beğendiklerini<br/>sağa kaydırarak buraya ekle.</p>
+        </div>
+      ) : (
+        <div className="space-y-12 pb-10">
+          {sortedCities.map(city => (
+            <div key={city} className="px-4">
+              {/* Şehir Başlığı ve Rota Butonu */}
+              <div className="flex justify-between items-end px-2 mb-4">
+                <div className="flex items-center gap-3">
+                    <span className="w-1 h-5 bg-white/20 dark:bg-white/10 rounded-full"></span>
+                    <h3 className="font-serif text-2xl font-bold text-gray-800 dark:text-gray-200">{city}</h3>
+                    <span className="text-[9px] font-black text-white/30 uppercase mt-1">
+                        {groupedItems[city].length} MEKAN
+                    </span>
+                </div>
+                
+                {groupedItems[city].length > 1 && (
+                    <button 
+                        onClick={() => handleStartRouteFlow(city, groupedItems[city])}
+                        className="flex items-center gap-2 px-3 py-1.5 bg-white/5 border border-white/10 text-white rounded-full text-[9px] font-black uppercase tracking-widest hover:bg-white/10 transition-all active:scale-95"
+                    >
+                        ROTA ÇİZ
+                    </button>
+                )}
+              </div>
+
+              {/* Şehir İçindeki Mekanlar Izgarası */}
+              <div className="grid grid-cols-2 gap-3">
+                {groupedItems[city].map((place) => (
+                  <div 
+                    key={place.id} 
+                    className="relative group cursor-pointer animate-in fade-in slide-in-from-bottom-2 duration-500"
+                    onClick={() => setSelectedPlace(place)}
+                  >
+                    <div className="relative aspect-[4/5] rounded-2xl overflow-hidden bg-gray-200 dark:bg-white/5 shadow-lg border border-white/5 group-hover:border-white/20 transition-all">
+                        <img
+                          src={place.images?.[0] ? getImageUrl(place.images[0], 0) : GENERIC_FALLBACK_IMAGE}
+                          alt={place.name}
+                          className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                          onError={(e) => {
+                            e.currentTarget.src = GENERIC_FALLBACK_IMAGE;
+                          }}
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-80" />
+                        
+                        <div className="absolute bottom-0 left-0 right-0 p-3 text-white">
+                           <h3 className="font-serif font-bold text-xs leading-tight line-clamp-2 drop-shadow-md">{place.name}</h3>
+                        </div>
+
+                        {/* Silme Butonu */}
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); onRemove(place.id); }}
+                          className="absolute top-2 right-2 p-2 bg-black/30 backdrop-blur-md rounded-full text-white/60 hover:bg-red-500 hover:text-white transition-all transform active:scale-90"
+                          aria-label="Sil"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3"><path fillRule="evenodd" d="M8.75 1A2.75 2.75 0 006 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 10.23 1.482l.149-.022.841 10.518A2.75 2.75 0 007.596 19h4.807a2.75 2.75 0 002.742-2.53l.841-10.52.149.023a.75.75 0 00.23-1.482A41.03 41.03 0 0014 4.193V3.75A2.75 2.75 0 0011.25 1h-2.5zM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4z" clipRule="evenodd" /></svg>
+                        </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {selectedPlace && (
+        <div className="absolute inset-0 z-[120] animate-in slide-in-from-bottom-10 fade-in duration-300">
+          <PlaceCard 
+            place={selectedPlace} 
+            mode="VIEW" 
+            onClose={() => setSelectedPlace(null)} 
+            onRemove={() => { onRemove(selectedPlace.id); setSelectedPlace(null); }}
+          />
+        </div>
+      )}
+    </div>
+  );
+};

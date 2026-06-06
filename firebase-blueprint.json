@@ -1,0 +1,29 @@
+{
+  "entities": {
+    "Place": {
+      "title": "Place",
+      "description": "Represents a hidden gem place in the discovery app.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "location": { "type": "string" },
+        "district": { "type": "string" },
+        "shortDescription": { "type": "string" },
+        "images": { "type": "array" },
+        "prompts": { "type": "array" },
+        "tags": { "type": "array" },
+        "entryFee": { "type": "string" },
+        "visitDuration": { "type": "string" },
+        "bestSeason": { "type": "string" },
+        "status": { "type": "string", "enum": ["draft", "published"] }
+      },
+      "required": ["name", "location", "shortDescription", "images", "prompts", "tags"]
+    }
+  },
+  "firestore": {
+    "/places/{placeId}": {
+      "schema": { "$ref": "#/entities/Place" },
+      "description": "Global pool of places for discovery."
+    }
+  }
+}
