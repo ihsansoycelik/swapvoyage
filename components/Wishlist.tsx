@@ -9,10 +9,40 @@ import { getImageUrl, GENERIC_FALLBACK_IMAGE } from '../services/imageService';
 interface WishlistProps {
   items: Place[];
   onRemove: (id: string) => void;
+  onMarkVisited: (place: Place) => void;
 }
 
-export const Wishlist: React.FC<WishlistProps> = ({ items, onRemove }) => {
+export const Wishlist: React.FC<WishlistProps> = ({ items, onRemove, onMarkVisited }) => {
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
+  const [longPressActive, setLongPressActive] = useState<Place | null>(null);
+  const longPressTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [isLongPressTriggered, setIsLongPressTriggered] = useState(false);
+  const [noCoordsBanner, setNoCoordsBanner] = useState(false);
+
+  const startPress = (place: Place) => {
+    setIsLongPressTriggered(false);
+    longPressTimeoutRef.current = setTimeout(() => {
+      setLongPressActive(place);
+      setIsLongPressTriggered(true);
+    }, 600);
+  };
+
+  const endPress = (place: Place, e: React.MouseEvent | React.TouchEvent) => {
+    if (longPressTimeoutRef.current) {
+      clearTimeout(longPressTimeoutRef.current);
+      longPressTimeoutRef.current = null;
+    }
+  };
+
+  const handleCardClick = (place: Place, e: React.MouseEvent) => {
+    if (isLongPressTriggered) {
+      e.preventDefault();
+      e.stopPropagation();
+      setIsLongPressTriggered(false);
+    } else {
+      setSelectedPlace(place);
+    }
+  };
   
   // Route Flow State
   const [isRouteFlowOpen, setIsRouteFlowOpen] = useState(false);
@@ -45,7 +75,8 @@ export const Wishlist: React.FC<WishlistProps> = ({ items, onRemove }) => {
     // Filter out places without coordinates for safety
     const validItems = cityItems.filter(p => p.coordinates);
     if (validItems.length === 0) {
-      alert("Bu şehirdeki mekanların koordinat bilgisi eksik.");
+      setNoCoordsBanner(true);
+      setTimeout(() => setNoCoordsBanner(false), 3000);
       return;
     }
 
@@ -56,8 +87,14 @@ export const Wishlist: React.FC<WishlistProps> = ({ items, onRemove }) => {
 
   return (
     <div className="bg-transparent min-h-full pb-32 pt-6 flex flex-col h-full relative overflow-y-auto no-scrollbar">
+      {/* No-coordinates toast */}
+      {noCoordsBanner && (
+        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[300] px-4 py-2 bg-red-500/90 backdrop-blur-sm text-white text-xs font-bold rounded-full shadow-lg animate-fade-in">
+          Bu şehirdeki mekanların koordinat bilgisi eksik
+        </div>
+      )}
       {/* Route Wizard Modal */}
-      <RouteFlow 
+      <RouteFlow
         isOpen={isRouteFlowOpen} 
         onClose={() => setIsRouteFlowOpen(false)} 
         places={routePlaces} 
@@ -111,8 +148,18 @@ export const Wishlist: React.FC<WishlistProps> = ({ items, onRemove }) => {
                 {groupedItems[city].map((place) => (
                   <div 
                     key={place.id} 
-                    className="relative group cursor-pointer animate-in fade-in slide-in-from-bottom-2 duration-500"
-                    onClick={() => setSelectedPlace(place)}
+                    className="relative group cursor-pointer animate-in fade-in slide-in-from-bottom-2 duration-500 select-none"
+                    onClick={(e) => handleCardClick(place, e)}
+                    onMouseDown={() => startPress(place)}
+                    onMouseUp={(e) => endPress(place, e)}
+                    onMouseLeave={(e) => endPress(place, e)}
+                    onTouchStart={() => startPress(place)}
+                    onTouchEnd={(e) => endPress(place, e)}
+                    onContextMenu={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setLongPressActive(place);
+                    }}
                   >
                     <div className="relative aspect-[4/5] rounded-2xl overflow-hidden bg-gray-200 dark:bg-white/5 shadow-lg border border-white/5 group-hover:border-white/20 transition-all">
                         <img
@@ -153,7 +200,45 @@ export const Wishlist: React.FC<WishlistProps> = ({ items, onRemove }) => {
             mode="VIEW" 
             onClose={() => setSelectedPlace(null)} 
             onRemove={() => { onRemove(selectedPlace.id); setSelectedPlace(null); }}
+            onMarkVisited={() => { onMarkVisited(selectedPlace); setSelectedPlace(null); }}
           />
+        </div>
+      )}
+
+      {/* Long-press Overlay Menu */}
+      {longPressActive && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[200] flex items-center justify-center p-6 animate-in fade-in duration-300" onClick={() => setLongPressActive(null)}>
+          <div className="bg-[#1c1c1e] border border-white/10 rounded-3xl w-full max-w-xs overflow-hidden shadow-2xl p-5 text-center space-y-4 animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
+            <h4 className="font-serif text-lg font-bold text-white leading-snug">{longPressActive.name}</h4>
+            <p className="text-[9px] text-zinc-500 font-bold uppercase tracking-[0.2em]">{longPressActive.location}</p>
+            
+            <div className="flex flex-col gap-2 pt-2">
+              <button 
+                onClick={() => {
+                  onMarkVisited(longPressActive);
+                  setLongPressActive(null);
+                }}
+                className="w-full py-3 bg-brand-purple hover:bg-brand-purple/90 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all active:scale-95 flex items-center justify-center gap-1.5"
+              >
+                Gezdim! ✓
+              </button>
+              <button 
+                onClick={() => {
+                  onRemove(longPressActive.id);
+                  setLongPressActive(null);
+                }}
+                className="w-full py-3 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-xl text-xs font-black uppercase tracking-wider transition-all active:scale-95"
+              >
+                Listeden Çıkar
+              </button>
+              <button 
+                onClick={() => setLongPressActive(null)}
+                className="w-full py-3 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-xl text-xs font-bold transition-all active:scale-95"
+              >
+                Vazgeç
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

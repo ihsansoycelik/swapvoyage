@@ -12,6 +12,7 @@ interface PlaceCardProps {
   mode?: 'SWIPE' | 'VIEW';
   onClose?: () => void;
   onRemove?: () => void;
+  onMarkVisited?: () => void;
   canUndo?: boolean;
 }
 
@@ -40,6 +41,7 @@ export const PlaceCard: React.FC<PlaceCardProps> = ({
   mode = 'SWIPE',
   onClose,
   onRemove,
+  onMarkVisited,
   canUndo = false
 }) => {
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -283,7 +285,7 @@ export const PlaceCard: React.FC<PlaceCardProps> = ({
                      ${idx === currentHeroIndex && loadedImages.has(src) ? 'opacity-100 scale-100 blur-0' : 'opacity-0 scale-110 blur-xl'}
                   `}
                   draggable={false}
-                  onError={(e) => { e.currentTarget.src = GENERIC_FALLBACK_IMAGE; }}
+                  onError={(e) => { e.currentTarget.src = GENERIC_FALLBACK_IMAGE; handleImageLoad(src); }}
               />
            ))}
            {/* Image counter — positioned bottom-right to avoid header overlap */}
@@ -379,7 +381,7 @@ export const PlaceCard: React.FC<PlaceCardProps> = ({
              </div>
 
              {/* Action Dock */}
-             {isSwipeMode && (
+             {isSwipeMode ? (
                 <div className="flex items-center gap-3 h-14">
                    {/* Pass Button - Neutral/Glass */}
                    <button 
@@ -399,6 +401,35 @@ export const PlaceCard: React.FC<PlaceCardProps> = ({
                       </svg>
                       <span className={`text-xs font-black uppercase tracking-widest ${dragOffset.x > 0 ? 'text-white' : 'text-black'}`}>Kaydet</span>
                    </button>
+                </div>
+             ) : (
+                <div className="flex items-center gap-3 h-14 z-50">
+                   {/* Gezdim Button - Violet Accent */}
+                   {onMarkVisited && (
+                     <button 
+                        onClick={(e) => { 
+                          e.stopPropagation(); 
+                          triggerHaptic('success');
+                          onMarkVisited();
+                        }} 
+                        className="flex-[2] h-full rounded-2xl bg-brand-purple hover:bg-brand-purple/95 text-white flex items-center justify-center gap-2 transition-all active:scale-95 shadow-[0_0_20px_rgba(147,51,234,0.35)]"
+                     >
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
+                          <path fillRule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-9.75 9.75-9.75 9.75S2.25 17.385 2.25 12zm13.36-1.814a.75.75 0 10-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 00-1.06 1.06l2.25 2.25a.75.75 0 001.14-.094l3.75-5.25z" clipRule="evenodd" />
+                        </svg>
+                        <span className="text-xs font-black uppercase tracking-widest text-white">Gezdim! ✓</span>
+                     </button>
+                   )}
+                   
+                   {/* Remove Button - Border/Red */}
+                   {onRemove && (
+                     <button 
+                        onClick={(e) => { e.stopPropagation(); triggerHaptic('warning'); onRemove(); }} 
+                        className="flex-1 h-full rounded-2xl bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 flex items-center justify-center gap-2 transition-all active:scale-95"
+                     >
+                        <span className="text-xs font-black uppercase tracking-widest">Sil</span>
+                     </button>
+                   )}
                 </div>
              )}
           </div>

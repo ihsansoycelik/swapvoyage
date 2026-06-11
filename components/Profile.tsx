@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { getWishlist } from '../services/storageService';
+import { getWishlist, getVisited } from '../services/storageService';
 import { Place } from '../types';
 
 interface ProfileProps {
@@ -32,9 +32,19 @@ const BADGE_DEFINITIONS = [
     minSaved: 5,
   },
   {
-    icon: '🧭',
-    label: 'Kaşif',
-    minSaved: 10,
+    icon: '🚶',
+    label: 'İlk Adım',
+    minVisited: 1,
+  },
+  {
+    icon: '🗺️',
+    label: 'Seyyah',
+    minVisited: 10,
+  },
+  {
+    icon: '🌟',
+    label: 'Kâşif',
+    minVisited: 25,
   },
 ];
 
@@ -46,18 +56,25 @@ const getInitials = (name: string): string =>
     .toUpperCase()
     .slice(0, 2);
 
-const computeBadges = (wishlist: Place[]) =>
+const computeBadges = (wishlist: Place[], visited: Place[]) =>
   BADGE_DEFINITIONS.map(badge => {
     if (badge.matchTags) {
       const active = wishlist.some(p =>
         p.tags.some(tag =>
           badge.matchTags!.some(bt => tag.toLowerCase().includes(bt.toLowerCase()))
         )
+      ) || visited.some(p =>
+        p.tags.some(tag =>
+          badge.matchTags!.some(bt => tag.toLowerCase().includes(bt.toLowerCase()))
+        )
       );
       return { ...badge, active };
     }
-    if (badge.minSaved !== undefined) {
+    if ('minSaved' in badge && badge.minSaved !== undefined) {
       return { ...badge, active: wishlist.length >= badge.minSaved };
+    }
+    if ('minVisited' in badge && badge.minVisited !== undefined) {
+      return { ...badge, active: visited.length >= badge.minVisited };
     }
     return { ...badge, active: false };
   });
@@ -65,23 +82,25 @@ const computeBadges = (wishlist: Place[]) =>
 export const Profile: React.FC<ProfileProps> = ({ onOpenSettings, onSignOut, onOpenNotifications }) => {
   const [stats, setStats] = useState({ saved: 0, cities: 0, routes: 0 });
   const [isEditing, setIsEditing] = useState(false);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [badges, setBadges] = useState(BADGE_DEFINITIONS.map(b => ({ ...b, active: false })));
   const [profile, setProfile] = useState({
     name: 'Gezgin',
-    title: 'Keşif Üyesi',
+    title: 'SwapVoyage Üyesi',
   });
 
   useEffect(() => {
     const loadStats = async () => {
       const wishlist = await getWishlist();
-      const cities = new Set(wishlist.map(p => p.location.split(',')[0].trim()));
-      const routes = parseInt(localStorage.getItem('kesif_route_count') || '0', 10);
+      const visited = await getVisited();
+      const cities = new Set(visited.map(p => p.location.split(',')[0].trim()));
+      const routes = parseInt(localStorage.getItem('swapvoyage_route_count') || '0', 10);
       setStats({ saved: wishlist.length, cities: cities.size, routes });
-      setBadges(computeBadges(wishlist));
+      setBadges(computeBadges(wishlist, visited));
     };
     loadStats();
 
-    const savedProfile = localStorage.getItem('kesif_user_profile');
+    const savedProfile = localStorage.getItem('swapvoyage_user_profile');
     if (savedProfile) {
       try {
         setProfile(JSON.parse(savedProfile));
@@ -90,15 +109,11 @@ export const Profile: React.FC<ProfileProps> = ({ onOpenSettings, onSignOut, onO
   }, []);
 
   const handleSave = () => {
-    localStorage.setItem('kesif_user_profile', JSON.stringify(profile));
+    localStorage.setItem('swapvoyage_user_profile', JSON.stringify(profile));
     setIsEditing(false);
   };
 
-  const handleSignOut = () => {
-    if (confirm('Uygulamayı sıfırlamak istediğine emin misin? Kayıtlı mekanların silinecek.')) {
-      onSignOut();
-    }
-  };
+  const handleSignOut = () => setShowResetConfirm(true);
 
   return (
     <div className="h-full overflow-y-auto no-scrollbar pt-20 pb-32 px-6">
@@ -213,14 +228,34 @@ export const Profile: React.FC<ProfileProps> = ({ onOpenSettings, onSignOut, onO
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4 text-gray-400"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
         </button>
 
-        <button onClick={handleSignOut} className="w-full flex items-center justify-between p-4 bg-white dark:bg-white/5 rounded-2xl border border-gray-100 dark:border-white/5 hover:bg-gray-50 dark:hover:bg-red-500/5 transition-colors group">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-red-500/10 text-red-500 rounded-lg group-hover:scale-110 transition-transform">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4"><path fillRule="evenodd" d="M7.5 3.75A1.5 1.5 0 006 5.25v13.5a1.5 1.5 0 001.5 1.5h6a1.5 1.5 0 001.5-1.5V15a.75.75 0 011.5 0v3.75a3 3 0 01-3 3h-6a3 3 0 01-3-3V5.25a3 3 0 013-3h6a3 3 0 013 3V9A.75.75 0 0115 9V5.25a1.5 1.5 0 00-1.5-1.5h-6zm10.72 4.72a.75.75 0 011.06 0l3 3a.75.75 0 010 1.06l-3 3a.75.75 0 11-1.06-1.06l1.72-1.72H9a.75.75 0 010-1.5h10.94l-1.72-1.72a.75.75 0 010-1.06z" clipRule="evenodd" /></svg>
+        {showResetConfirm ? (
+          <div className="w-full p-4 bg-red-500/10 rounded-2xl border border-red-500/20 space-y-3">
+            <p className="text-sm font-bold text-red-400 text-center">Kayıtlı mekanların silinecek. Emin misin?</p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowResetConfirm(false)}
+                className="flex-1 py-2.5 bg-white/5 rounded-xl text-white/60 text-xs font-bold hover:bg-white/10 transition-colors"
+              >
+                İptal
+              </button>
+              <button
+                onClick={() => { setShowResetConfirm(false); onSignOut(); }}
+                className="flex-1 py-2.5 bg-red-500 rounded-xl text-white text-xs font-bold hover:bg-red-600 transition-colors"
+              >
+                Sıfırla
+              </button>
             </div>
-            <span className="text-sm font-medium text-red-500">Sıfırla & Yeniden Başla</span>
           </div>
-        </button>
+        ) : (
+          <button onClick={handleSignOut} className="w-full flex items-center justify-between p-4 bg-white dark:bg-white/5 rounded-2xl border border-gray-100 dark:border-white/5 hover:bg-gray-50 dark:hover:bg-red-500/5 transition-colors group">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-red-500/10 text-red-500 rounded-lg group-hover:scale-110 transition-transform">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4"><path fillRule="evenodd" d="M7.5 3.75A1.5 1.5 0 006 5.25v13.5a1.5 1.5 0 001.5 1.5h6a1.5 1.5 0 001.5-1.5V15a.75.75 0 011.5 0v3.75a3 3 0 01-3 3h-6a3 3 0 01-3-3V5.25a3 3 0 013-3h6a3 3 0 013 3V9A.75.75 0 0115 9V5.25a1.5 1.5 0 00-1.5-1.5h-6zm10.72 4.72a.75.75 0 011.06 0l3 3a.75.75 0 010 1.06l-3 3a.75.75 0 11-1.06-1.06l1.72-1.72H9a.75.75 0 010-1.5h10.94l-1.72-1.72a.75.75 0 010-1.06z" clipRule="evenodd" /></svg>
+              </div>
+              <span className="text-sm font-medium text-red-500">Sıfırla & Yeniden Başla</span>
+            </div>
+          </button>
+        )}
       </div>
     </div>
   );

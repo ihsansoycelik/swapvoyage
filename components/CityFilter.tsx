@@ -171,7 +171,7 @@ export const CityFilter: React.FC<CityFilterProps> = ({ isOpen, onClose, onApply
                   <input 
                     type="text" 
                     placeholder="Şehir ara..." 
-                    className="w-full bg-gray-100 dark:bg-brand-dark-bg rounded-xl py-3 pl-10 pr-10 text-sm font-medium text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-brand-purple/20 transition-all"
+                    className="w-full bg-gray-100 dark:bg-brand-dark-bg rounded-xl py-3 pl-10 pr-10 text-base font-medium text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-brand-purple/20 transition-all"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                   />

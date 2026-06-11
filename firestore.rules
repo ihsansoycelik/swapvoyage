@@ -28,7 +28,7 @@ service cloud.firestore {
 
     match /places/{placeId} {
       allow get: if isValidId(placeId) && (existing().status == 'published' || isAdmin());
-      allow list: if existing().status == 'published' || isAdmin();
+      allow list: if isAdmin();
       
       allow create: if isAdmin() && isValidId(placeId) && isValidPlace(incoming());
       
@@ -37,6 +37,10 @@ service cloud.firestore {
       );
       
       allow delete: if isAdmin() && isValidId(placeId);
+    }
+
+    match /users/{userId} {
+      allow read, write: if isSignedIn() && request.auth.uid == userId;
     }
   }
 }

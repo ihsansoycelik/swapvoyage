@@ -4,19 +4,22 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>Keşif | Hidden Gems</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:ital,wght@0,500;0,700;0,800;1,600&display=swap" rel="stylesheet">
+    <title>SwapVoyage</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:ital,wght@0,500;0,700;0,800;1,600&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:ital,wght@0,500;0,700;0,800;1,600&display=swap"></noscript>
     <!-- Dark class is set by JS on load to avoid flash — see App.tsx useEffect -->
     <script>
       (function () {
-        var stored = localStorage.getItem('kesif_dark_mode');
+        var stored = localStorage.getItem('swapvoyage_dark_mode');
         if (stored !== 'false') {
           document.documentElement.classList.add('dark');
         }
       })();
     </script>
   </head>
-  <body class="bg-[#111] dark:bg-[#050505] text-brand-black dark:text-white antialiased transition-colors duration-500 overflow-hidden flex items-center justify-center min-h-screen">
+  <body class="bg-[#111] dark:bg-[#050505] text-brand-black dark:text-white antialiased transition-colors duration-500 overflow-hidden flex items-center justify-center min-h-[100dvh]">
     <div id="root" class="w-full h-full flex justify-center"></div>
     <script type="module" src="/index.tsx"></script>
   </body>

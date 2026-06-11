@@ -17,8 +17,8 @@ export default defineConfig(({ mode }) => {
           registerType: 'autoUpdate',
           includeAssets: ['icon.svg'],
           manifest: {
-            name: 'Keşif | Hidden Gems',
-            short_name: 'Keşif',
+            name: 'SwapVoyage',
+            short_name: 'SwapVoyage',
             description: 'Discover hidden gems around you',
             theme_color: '#000000',
             background_color: '#000000',

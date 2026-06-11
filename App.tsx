@@ -1,14 +1,14 @@
-
 import React, { useState, useEffect, useCallback, Suspense, lazy } from 'react';
 import { Place, ViewMode, FilterState } from './types';
 import { fetchHiddenGems } from './services/geminiService';
-import { getWishlist, addToWishlist, removeFromWishlist, getGlobalPlaces, clearWishlist } from './services/storageService';
+import { getWishlist, addToWishlist, removeFromWishlist, getGlobalPlaces, clearWishlist, getVisited, addToVisited, removeFromVisited, clearVisited } from './services/storageService';
 import { auth } from './services/firebase';
 import { signOut } from 'firebase/auth';
 import { PlaceCard } from './components/PlaceCard';
 import { Navigation } from './components/Navigation';
 import { SplashScreen } from './components/SplashScreen';
 import { SkeletonCard } from './components/SkeletonCard';
+import { JourneyMap } from './components/JourneyMap';
 
 const Wishlist = lazy(() => import('./components/Wishlist').then(m => ({ default: m.Wishlist })));
 const Profile = lazy(() => import('./components/Profile').then(m => ({ default: m.Profile })));
@@ -37,6 +37,7 @@ const App = () => {
   const [stack, setStack] = useState<Place[]>([]);
   const [history, setHistory] = useState<Place[]>([]);
   const [wishlist, setWishlist] = useState<Place[]>([]);
+  const [visited, setVisited] = useState<Place[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [isFetchingBackground, setIsFetchingBackground] = useState(false);
@@ -44,7 +45,7 @@ const App = () => {
   const [filters, setFilters] = useState<FilterState>({ location: null, categories: [] });
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
-    const stored = localStorage.getItem('kesif_dark_mode');
+    const stored = localStorage.getItem('swapvoyage_dark_mode');
     return stored !== null ? stored === 'true' : true;
   });
   const [isAdminOpen, setIsAdminOpen] = useState(false);
@@ -55,7 +56,7 @@ const App = () => {
   // Apply dark mode to DOM and persist
   useEffect(() => {
     document.documentElement.classList.toggle('dark', isDarkMode);
-    localStorage.setItem('kesif_dark_mode', String(isDarkMode));
+    localStorage.setItem('swapvoyage_dark_mode', String(isDarkMode));
   }, [isDarkMode]);
 
   // Track admin auth state
@@ -68,7 +69,7 @@ const App = () => {
 
   // Check onboarding status on mount
   useEffect(() => {
-    const isOnboardingCompleted = localStorage.getItem('kesif_onboarding_completed');
+    const isOnboardingCompleted = localStorage.getItem('swapvoyage_onboarding_completed');
     if (!isOnboardingCompleted) {
       setShowOnboarding(true);
     }
@@ -149,7 +150,9 @@ const App = () => {
     const init = async () => {
       const savedWishlist = await getWishlist();
       setWishlist(savedWishlist);
-      if (localStorage.getItem('kesif_onboarding_completed')) {
+      const savedVisited = await getVisited();
+      setVisited(savedVisited);
+      if (localStorage.getItem('swapvoyage_onboarding_completed')) {
         await loadDiscoveryStack(savedWishlist, filters);
       } else {
         setLoading(false);
@@ -164,7 +167,7 @@ const App = () => {
   const filtersReadyRef = React.useRef(false);
   useEffect(() => {
     if (!filtersReadyRef.current) { filtersReadyRef.current = true; return; }
-    if (localStorage.getItem('kesif_onboarding_completed')) {
+    if (localStorage.getItem('swapvoyage_onboarding_completed')) {
       // Read fresh wishlist from localforage to avoid stale closure
       getWishlist().then(freshWishlist => {
         loadDiscoveryStack(freshWishlist, filters);
@@ -174,7 +177,7 @@ const App = () => {
   }, [filters]);
 
   const handleOnboardingComplete = async (selectedInterests: string[]) => {
-    localStorage.setItem('kesif_onboarding_completed', 'true');
+    localStorage.setItem('swapvoyage_onboarding_completed', 'true');
     setShowOnboarding(false);
 
     const newFilters = { ...filters, categories: selectedInterests };
@@ -185,7 +188,7 @@ const App = () => {
     setTimeout(() => setIsFilterOpen(true), 800);
 
     setTimeout(() => {
-      const hasPrompted = localStorage.getItem('kesif_notif_prompted');
+      const hasPrompted = localStorage.getItem('swapvoyage_notif_prompted');
       if (!hasPrompted) setShowNotificationPrompt(true);
     }, 4000);
   };
@@ -225,13 +228,23 @@ const App = () => {
     await removeFromWishlist(id);
   }, []);
 
+  const handleMarkVisited = useCallback(async (place: Place) => {
+    setWishlist(prev => prev.filter(p => p.id !== place.id));
+    await removeFromWishlist(place.id);
+    setVisited(prev => {
+      if (prev.some(p => p.id === place.id)) return prev;
+      return [place, ...prev];
+    });
+    await addToVisited(place);
+  }, []);
+
   const handleOpenNotifications = useCallback(() => {
-    const hasPrompted = localStorage.getItem('kesif_notif_prompted');
+    const hasPrompted = localStorage.getItem('swapvoyage_notif_prompted');
     if (!hasPrompted) {
       setShowNotificationPrompt(true);
     } else if (Notification.permission === 'default') {
       // Already dismissed before but hasn't granted — offer again
-      localStorage.removeItem('kesif_notif_prompted');
+      localStorage.removeItem('swapvoyage_notif_prompted');
       setShowNotificationPrompt(true);
     } else if (Notification.permission === 'granted') {
       alert('Bildirimler zaten aktif ✓');
@@ -245,15 +258,17 @@ const App = () => {
       await signOut(auth);
     } catch {}
     // Clear localStorage
-    localStorage.removeItem('kesif_onboarding_completed');
-    localStorage.removeItem('kesif_user_profile');
-    localStorage.removeItem('kesif_notif_prompted');
-    localStorage.removeItem('kesif_route_count');
-    localStorage.removeItem('kesif_dark_mode');
+    localStorage.removeItem('swapvoyage_onboarding_completed');
+    localStorage.removeItem('swapvoyage_user_profile');
+    localStorage.removeItem('swapvoyage_notif_prompted');
+    localStorage.removeItem('swapvoyage_route_count');
+    localStorage.removeItem('swapvoyage_dark_mode');
     // Clear IndexedDB wishlist (localforage)
     await clearWishlist();
+    await clearVisited();
     // Reset React state
     setWishlist([]);
+    setVisited([]);
     setStack([]);
     setHistory([]);
     setFilters({ location: null, categories: [] });
@@ -334,8 +349,14 @@ const App = () => {
     if (view === 'WISHLIST') {
       return (
         <Suspense fallback={<SkeletonCard />}>
-          <Wishlist items={wishlist} onRemove={handleRemoveFromWishlist} />
+          <Wishlist items={wishlist} onRemove={handleRemoveFromWishlist} onMarkVisited={handleMarkVisited} />
         </Suspense>
+      );
+    }
+
+    if (view === 'HISTORY') {
+      return (
+        <JourneyMap wishlist={wishlist} visited={visited} onClose={() => setView('DISCOVER')} />
       );
     }
 
@@ -374,8 +395,8 @@ const App = () => {
           {showNotificationPrompt && (
             <NotificationPrompt
               isOpen={showNotificationPrompt}
-              onAccept={() => { setShowNotificationPrompt(false); localStorage.setItem('kesif_notif_prompted', 'true'); }}
-              onDecline={() => { setShowNotificationPrompt(false); localStorage.setItem('kesif_notif_prompted', 'true'); }}
+              onAccept={() => { setShowNotificationPrompt(false); localStorage.setItem('swapvoyage_notif_prompted', 'true'); }}
+              onDecline={() => { setShowNotificationPrompt(false); localStorage.setItem('swapvoyage_notif_prompted', 'true'); }}
             />
           )}
         </Suspense>
@@ -393,7 +414,11 @@ const App = () => {
             >
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 text-white/50 group-hover:text-white/80"><path fillRule="evenodd" d="M9 3.5a5.5 5.5 0 100 11 5.5 5.5 0 000-11zM2 9a7 7 0 1112.452 4.391l3.328 3.329a.75.75 0 11-1.06 1.06l-3.329-3.328A7 7 0 012 9z" clipRule="evenodd" /></svg>
               <span className="text-xs font-medium text-white/50 group-hover:text-white/90">
-                {filters.location ? filters.location.replace('COORDS:', 'Konum: ') : 'Şehir, bölge veya mekan ara...'}
+                {filters.location
+                  ? filters.location.startsWith('COORDS:')
+                    ? 'Yakınımda Ara'
+                    : filters.location
+                  : 'Şehir, bölge veya mekan ara...'}
               </span>
             </button>
 

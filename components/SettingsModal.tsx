@@ -94,7 +94,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
            
            <div className="pt-2">
              <p className="text-[10px] text-center text-gray-400 dark:text-gray-600 font-medium uppercase tracking-wide transition-colors">
-               Keşif v1.2.0
+               SwapVoyage v1.2.0
              </p>
            </div>
         </div>

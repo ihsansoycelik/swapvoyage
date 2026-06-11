@@ -49,7 +49,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
   };
 
   const handleDevSkip = () => {
-    onComplete(['Nature', 'History']);
+    onComplete(['Doğa', 'Tarih']);
   };
 
   const toggleInterest = (id: string) => {

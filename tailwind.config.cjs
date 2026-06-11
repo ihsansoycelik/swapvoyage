@@ -15,8 +15,8 @@ module.exports = {
       },
       colors: {
         brand: {
-          purple: '#ffffff',
-          lavender: '#333333',
+          purple: '#A855F7',
+          lavender: '#C4B5FD',
           black: '#080808',
           gray: '#949494',
           offwhite: '#F9F9F9',

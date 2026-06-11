@@ -41,8 +41,8 @@ export const RouteFlow: React.FC<RouteFlowProps> = ({ isOpen, onClose, places, c
   };
 
   const incrementRouteCount = () => {
-    const current = parseInt(localStorage.getItem('kesif_route_count') || '0', 10);
-    localStorage.setItem('kesif_route_count', String(current + 1));
+    const current = parseInt(localStorage.getItem('swapvoyage_route_count') || '0', 10);
+    localStorage.setItem('swapvoyage_route_count', String(current + 1));
   };
 
   const generateItinerary = async (useAI: boolean) => {
@@ -70,7 +70,7 @@ export const RouteFlow: React.FC<RouteFlowProps> = ({ isOpen, onClose, places, c
   const handleShare = async () => {
     const text = `🇹🇷 ${cityName} Rota Planım:\n\n` + 
       itinerary.map(d => `Gün ${d.day}:\n` + d.places.map(p => `• ${p.name}`).join('\n')).join('\n\n') +
-      `\n\nKeşif App ile oluşturuldu.`;
+      `\n\nSwapVoyage ile oluşturuldu.`;
     
     if (navigator.share) {
       try { await navigator.share({ title: `${cityName} Rotası`, text }); } catch (e) {}
@@ -83,11 +83,17 @@ export const RouteFlow: React.FC<RouteFlowProps> = ({ isOpen, onClose, places, c
   const handleNavigate = () => {
     const allPlaces = itinerary.flatMap(d => d.places);
     if (allPlaces.length === 0) return;
-    
+
     const destination = allPlaces[allPlaces.length - 1];
-    const waypoints = allPlaces.slice(0, allPlaces.length - 1).map(p => `${p.coordinates?.lat},${p.coordinates?.lng}`).join('|');
-    
-    const url = `https://www.google.com/maps/dir/?api=1&destination=${destination.coordinates?.lat},${destination.coordinates?.lng}&waypoints=${waypoints}&travelmode=driving`;
+    if (!destination.coordinates?.lat || !destination.coordinates?.lng) return;
+
+    const waypoints = allPlaces
+      .slice(0, -1)
+      .filter(p => p.coordinates?.lat && p.coordinates?.lng)
+      .map(p => `${p.coordinates!.lat},${p.coordinates!.lng}`)
+      .join('|');
+
+    const url = `https://www.google.com/maps/dir/?api=1&destination=${destination.coordinates.lat},${destination.coordinates.lng}&waypoints=${waypoints}&travelmode=driving`;
     window.open(url, '_blank');
   };
 
@@ -110,7 +116,7 @@ export const RouteFlow: React.FC<RouteFlowProps> = ({ isOpen, onClose, places, c
         <div className="p-5 border-b border-white/10 flex justify-between items-center bg-black/40">
            <div>
              <h2 className="text-lg font-bold text-white font-serif">{cityName} Rotası</h2>
-             <p className="text-[10px] text-white/50 uppercase tracking-widest">Adım {step === 'DURATION' ? '1' : step === 'METHOD' ? '2' : step === 'MANUAL_SORT' ? '2b' : '3'} / 3</p>
+             <p className="text-[10px] text-white/50 uppercase tracking-widest">Adım {step === 'DURATION' ? '1' : step === 'METHOD' ? '2' : step === 'MANUAL_SORT' ? '3' : '4'} / 4</p>
            </div>
            <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full text-white/60">✕</button>
         </div>

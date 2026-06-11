@@ -1,7 +1,0 @@
-{
-  "name": "Copy of Keşif - Hidden Gems of Turkey",
-  "description": "A Hinge-style discovery app for niche, historical, and hidden travel destinations in Turkey. Swipe through curated profiles of ancient ruins and secret bays.",
-  "requestFramePermissions": [
-    "geolocation"
-  ]
-}
