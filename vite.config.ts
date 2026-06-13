@@ -36,18 +36,49 @@ export default defineConfig(({ mode }) => {
             globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
             runtimeCaching: [
               {
+                // Place images — cache-first, 30 day expiry
+                urlPattern: /\.(jpg|jpeg|png|webp|avif)(\?.*)?$/i,
+                handler: 'CacheFirst',
+                options: {
+                  cacheName: 'images',
+                  expiration: { maxEntries: 200, maxAgeSeconds: 60 * 60 * 24 * 30 },
+                  cacheableResponse: { statuses: [0, 200] }
+                }
+              },
+              {
+                // Pollinations AI images — cache-first, 7 days
                 urlPattern: /^https:\/\/images\.pollinations\.ai\/.*/i,
                 handler: 'CacheFirst',
                 options: {
                   cacheName: 'pollinations-image-cache',
-                  expiration: {
-                    maxEntries: 100,
-                    maxAgeSeconds: 60 * 60 * 24 * 7 // 7 Days
-                  },
-                  cacheableResponse: {
-                    statuses: [0, 200]
-                  }
+                  expiration: { maxEntries: 100, maxAgeSeconds: 60 * 60 * 24 * 7 },
+                  cacheableResponse: { statuses: [0, 200] }
                 }
+              },
+              {
+                // CartoDB/Leaflet map tiles — cache-first, 7 day expiry
+                urlPattern: /basemaps\.cartocdn\.com/,
+                handler: 'CacheFirst',
+                options: {
+                  cacheName: 'map-tiles',
+                  expiration: { maxEntries: 500, maxAgeSeconds: 60 * 60 * 24 * 7 },
+                  cacheableResponse: { statuses: [0, 200] }
+                }
+              },
+              {
+                // Firestore API — network-first, content freshness preferred
+                urlPattern: /firestore\.googleapis\.com/,
+                handler: 'NetworkFirst',
+                options: {
+                  cacheName: 'firestore',
+                  networkTimeoutSeconds: 5,
+                  cacheableResponse: { statuses: [0, 200] }
+                }
+              },
+              {
+                // Gemini API — never cache AI responses
+                urlPattern: /generativelanguage\.googleapis\.com/,
+                handler: 'NetworkOnly'
               }
             ]
           }

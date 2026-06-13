@@ -5,7 +5,8 @@
       "name": "kesif-dev",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev"],
-      "port": 3000
+      "cwd": "/Users/ihsan/Desktop/Product Projects/SwapVoyage",
+      "port": 3005
     }
   ]
 }

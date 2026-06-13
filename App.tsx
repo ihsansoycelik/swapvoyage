@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, Suspense, lazy } from 'react';
+import React, { useState, useEffect, useCallback, Suspense, lazy, useRef, useMemo } from 'react';
 import { Place, ViewMode, FilterState } from './types';
 import { fetchHiddenGems } from './services/geminiService';
 import { getWishlist, addToWishlist, removeFromWishlist, getGlobalPlaces, clearWishlist, getVisited, addToVisited, removeFromVisited, clearVisited } from './services/storageService';
@@ -9,6 +9,8 @@ import { Navigation } from './components/Navigation';
 import { SplashScreen } from './components/SplashScreen';
 import { SkeletonCard } from './components/SkeletonCard';
 import { JourneyMap } from './components/JourneyMap';
+import { GezmisimList } from './components/GezmisimList';
+import ErrorBoundary from './components/ErrorBoundary';
 
 const Wishlist = lazy(() => import('./components/Wishlist').then(m => ({ default: m.Wishlist })));
 const Profile = lazy(() => import('./components/Profile').then(m => ({ default: m.Profile })));
@@ -40,7 +42,7 @@ const App = () => {
   const [visited, setVisited] = useState<Place[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
-  const [isFetchingBackground, setIsFetchingBackground] = useState(false);
+  const isFetchingRef = useRef(false);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [filters, setFilters] = useState<FilterState>({ location: null, categories: [] });
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -52,6 +54,10 @@ const App = () => {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showNotificationPrompt, setShowNotificationPrompt] = useState(false);
   const [isAdminUser, setIsAdminUser] = useState(false);
+  const [historySubView, setHistorySubView] = useState<'LIST' | 'MAP'>('LIST');
+  const [mapFocusPlace, setMapFocusPlace] = useState<Place | null>(null);
+  const [visitedSnackbar, setVisitedSnackbar] = useState<Place | null>(null);
+  const visitedSnackbarTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Apply dark mode to DOM and persist
   useEffect(() => {
@@ -75,6 +81,14 @@ const App = () => {
     }
   }, []);
 
+  // Reset history sub-view when navigating away
+  useEffect(() => {
+    if (view !== 'HISTORY') {
+      setHistorySubView('LIST');
+      setMapFocusPlace(null);
+    }
+  }, [view]);
+
   const loadDiscoveryStack = useCallback(async (currentWishlist: Place[], currentFilters: FilterState) => {
     setLoading(true);
     setLoadError(false);
@@ -89,10 +103,14 @@ const App = () => {
       if (currentFilters.location) {
         if (currentFilters.location.startsWith('COORDS:')) {
           const [lat, lng] = currentFilters.location.replace('COORDS:', '').split(',').map(Number);
-          filtered = filtered.filter(p => {
-            if (!p.coordinates) return false;
-            return calculateDistance(lat, lng, p.coordinates.lat, p.coordinates.lng) < 250;
-          });
+          const NEAR_ME_PRIMARY_KM = 50;
+          const NEAR_ME_FALLBACK_KM = 100;
+          const nearby50 = filtered.filter(p =>
+            p.coordinates && calculateDistance(lat, lng, p.coordinates.lat, p.coordinates.lng) <= NEAR_ME_PRIMARY_KM
+          );
+          filtered = nearby50.length >= 3
+            ? nearby50
+            : filtered.filter(p => p.coordinates && calculateDistance(lat, lng, p.coordinates.lat, p.coordinates.lng) <= NEAR_ME_FALLBACK_KM);
         } else {
           filtered = filtered.filter(p => p.location.toLowerCase().includes(currentFilters.location!.toLowerCase()));
         }
@@ -122,7 +140,6 @@ const App = () => {
     currentHistory: Place[],
     currentFilters: FilterState
   ) => {
-    setIsFetchingBackground(true);
     try {
       const excludeIds = [
         ...currentWishlist.map(p => p.id),
@@ -133,17 +150,18 @@ const App = () => {
       setStack(prev => [...prev, ...geminiPlaces]);
     } catch (e) {
       console.error("Background fetch failed", e);
-    } finally {
-      setIsFetchingBackground(false);
     }
   }, []);
 
-  // Background fetch when stack is running low
+  // Background fetch when stack is running low — useRef guard prevents double-fetch in React Strict Mode
   useEffect(() => {
-    if (view === 'DISCOVER' && stack.length === 2 && !loading && !isFetchingBackground) {
-      triggerBackgroundFetch(wishlist, stack, history, filters);
+    if (view === 'DISCOVER' && stack.length === 2 && !loading && !isFetchingRef.current) {
+      isFetchingRef.current = true;
+      triggerBackgroundFetch(wishlist, stack, history, filters).finally(() => {
+        isFetchingRef.current = false;
+      });
     }
-  }, [stack.length, loading, isFetchingBackground, view, wishlist, stack, history, filters, triggerBackgroundFetch]);
+  }, [stack.length, loading, view, wishlist, stack, history, filters, triggerBackgroundFetch]);
 
   // Initial load — mount only
   useEffect(() => {
@@ -229,14 +247,31 @@ const App = () => {
   }, []);
 
   const handleMarkVisited = useCallback(async (place: Place) => {
-    setWishlist(prev => prev.filter(p => p.id !== place.id));
-    await removeFromWishlist(place.id);
+    // Add to visited — do NOT remove from wishlist (badge shown instead)
     setVisited(prev => {
       if (prev.some(p => p.id === place.id)) return prev;
       return [place, ...prev];
     });
     await addToVisited(place);
+
+    // Clear any existing snackbar timer
+    if (visitedSnackbarTimerRef.current) clearTimeout(visitedSnackbarTimerRef.current);
+    setVisitedSnackbar(place);
+    visitedSnackbarTimerRef.current = setTimeout(() => {
+      setVisitedSnackbar(null);
+      visitedSnackbarTimerRef.current = null;
+    }, 5000);
   }, []);
+
+  const handleUndoVisited = useCallback(async () => {
+    if (!visitedSnackbar) return;
+    if (visitedSnackbarTimerRef.current) clearTimeout(visitedSnackbarTimerRef.current);
+    visitedSnackbarTimerRef.current = null;
+    const place = visitedSnackbar;
+    setVisitedSnackbar(null);
+    setVisited(prev => prev.filter(p => p.id !== place.id));
+    await removeFromVisited(place.id);
+  }, [visitedSnackbar]);
 
   const handleOpenNotifications = useCallback(() => {
     const hasPrompted = localStorage.getItem('swapvoyage_notif_prompted');
@@ -277,6 +312,8 @@ const App = () => {
     setView('DISCOVER');
   }, []);
 
+  const visitedIds = useMemo(() => new Set(visited.map(p => p.id)), [visited]);
+
   const renderContent = () => {
     if (view === 'DISCOVER') {
       // Don't render discover content while onboarding is still active
@@ -306,7 +343,9 @@ const App = () => {
       }
 
       return stack.length > 0 ? (
-        <PlaceCard key={stack[0].id} place={stack[0]} onLike={handleLike} onPass={handlePass} onUndo={handleUndo} canUndo={history.length > 0} />
+        <ErrorBoundary key={stack[0].id}>
+          <PlaceCard key={stack[0].id} place={stack[0]} onLike={handleLike} onPass={handlePass} onUndo={handleUndo} canUndo={history.length > 0} />
+        </ErrorBoundary>
       ) : (
         <div className="flex flex-col items-center justify-center h-full text-center p-8 pb-32">
           <div className="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center mb-6 animate-pulse">
@@ -349,14 +388,27 @@ const App = () => {
     if (view === 'WISHLIST') {
       return (
         <Suspense fallback={<SkeletonCard />}>
-          <Wishlist items={wishlist} onRemove={handleRemoveFromWishlist} onMarkVisited={handleMarkVisited} />
+          <Wishlist items={wishlist} onRemove={handleRemoveFromWishlist} onMarkVisited={handleMarkVisited} visitedIds={visitedIds} />
         </Suspense>
       );
     }
 
     if (view === 'HISTORY') {
+      if (historySubView === 'MAP') {
+        return (
+          <JourneyMap
+            wishlist={wishlist}
+            visited={visited}
+            focusPlace={mapFocusPlace}
+            onClose={() => { setHistorySubView('LIST'); setMapFocusPlace(null); }}
+          />
+        );
+      }
       return (
-        <JourneyMap wishlist={wishlist} visited={visited} onClose={() => setView('DISCOVER')} />
+        <GezmisimList
+          visited={visited}
+          onShowMap={(place) => { setMapFocusPlace(place ?? null); setHistorySubView('MAP'); }}
+        />
       );
     }
 
@@ -451,6 +503,29 @@ const App = () => {
         <main className="flex-1 relative overflow-hidden h-full">
           {renderContent()}
           <Navigation currentView={view} setView={setView} wishlistCount={wishlist.length} />
+
+          {/* Visited Undo Snackbar */}
+          {visitedSnackbar && (
+            <div className="absolute bottom-24 left-4 right-4 z-[75] animate-in slide-in-from-bottom-4 fade-in duration-300 pointer-events-auto">
+              <div className="bg-zinc-900/95 backdrop-blur-xl border border-white/10 rounded-2xl px-4 py-3 flex items-center gap-3 shadow-2xl">
+                <div className="w-8 h-8 flex-shrink-0 bg-emerald-500/20 rounded-full flex items-center justify-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#10b981" className="w-4 h-4">
+                    <path fillRule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12zm13.36-1.814a.75.75 0 10-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 00-1.06 1.06l2.25 2.25a.75.75 0 001.14-.094l3.75-5.25z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-white text-xs font-bold truncate">{visitedSnackbar.name}</p>
+                  <p className="text-white/40 text-[10px]">Gezilen mekanlara eklendi</p>
+                </div>
+                <button
+                  onClick={handleUndoVisited}
+                  className="flex-shrink-0 px-3 py-1.5 text-emerald-400 text-[10px] font-black uppercase tracking-wider hover:text-emerald-300 transition-colors active:scale-95"
+                >
+                  Geri Al
+                </button>
+              </div>
+            </div>
+          )}
         </main>
       </div>
     </div>

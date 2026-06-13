@@ -79,6 +79,23 @@ export const Navigation: React.FC<NavigationProps> = ({ currentView, setView, wi
           )}
         </button>
 
+        {/* History Tab */}
+        <button 
+          onClick={() => setView('HISTORY')}
+          className={`relative px-5 py-3 rounded-full flex items-center gap-2 transition-all duration-300 ${
+            currentView === 'HISTORY' 
+              ? 'bg-white text-black shadow-lg shadow-black/40 dark:shadow-white/5' 
+              : 'text-white/60 hover:bg-white/5 hover:text-white'
+          }`}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill={currentView === 'HISTORY' ? "currentColor" : "none"} stroke="currentColor" strokeWidth={2.5} className="w-5 h-5">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          {currentView === 'HISTORY' && (
+            <span className="text-xs font-bold tracking-wider uppercase animate-in fade-in zoom-in duration-300">Geçmişim</span>
+          )}
+        </button>
+
         {/* Profile Tab */}
         <button 
           onClick={() => setView('PROFILE')}

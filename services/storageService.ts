@@ -136,7 +136,8 @@ export const getVisited = async (): Promise<Place[]> => {
 export const addToVisited = async (place: Place): Promise<void> => {
   const current = await getVisited();
   if (!current.some(p => p.id === place.id)) {
-    const updated = [place, ...current];
+    const stamped = { ...place, visitedAt: Date.now() };
+    const updated = [stamped, ...current];
     await localforage.setItem(VISITED_KEY, updated);
 
     if (auth.currentUser) {

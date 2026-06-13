@@ -22,6 +22,8 @@ export interface Place {
   visitDuration?: string;
   bestSeason?: string;
   status?: 'draft' | 'published';
+  // Set client-side when user marks a place visited
+  visitedAt?: number;
 }
 
 export interface FilterState {
@@ -29,7 +31,7 @@ export interface FilterState {
   categories: string[];
 }
 
-export type ViewMode = 'DISCOVER' | 'WISHLIST' | 'PROFILE' | 'ADMIN';
+export type ViewMode = 'DISCOVER' | 'WISHLIST' | 'PROFILE' | 'ADMIN' | 'HISTORY';
 
 // Basic Analytics Types
 export type AnalyticsEventType = 

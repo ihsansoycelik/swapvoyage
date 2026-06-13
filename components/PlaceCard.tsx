@@ -17,7 +17,10 @@ interface PlaceCardProps {
 }
 
 // --- Constants ---
-const SWIPE_THRESHOLD = 110;
+const COMMIT_DISTANCE = 120;   // px — card animates away
+const INDICATOR_START = 40;    // px — direction indicator begins appearing
+const INDICATOR_FULL = 80;     // px — indicator at full opacity
+const COMMIT_VELOCITY = 0.5;   // px/ms — fast flick commits regardless of distance
 
 // --- Helper: Premium Haptics ---
 const triggerHaptic = (type: 'selection' | 'impact' | 'light' | 'success' | 'warning') => {
@@ -45,6 +48,7 @@ export const PlaceCard: React.FC<PlaceCardProps> = ({
   canUndo = false
 }) => {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const dragStartTimeRef = useRef<number>(0);
   const [dragStart, setDragStart] = useState<{x: number, y: number} | null>(null);
   const [dragOffset, setDragOffset] = useState({x: 0, y: 0});
   const [exitDirection, setExitDirection] = useState<'left' | 'right' | null>(null);
@@ -126,6 +130,7 @@ export const PlaceCard: React.FC<PlaceCardProps> = ({
     if (!isSwipeMode || exitDirection) return;
     if (target && (target as HTMLElement).closest('button')) return;
     setDragStart({ x: clientX, y: clientY });
+    dragStartTimeRef.current = Date.now();
     setIsScrolling(false);
     setHasCrossedThreshold(false);
   };
@@ -144,10 +149,10 @@ export const PlaceCard: React.FC<PlaceCardProps> = ({
     if (Math.abs(dx) > 2) {
        if (isTouch && e && e.cancelable) e.preventDefault();
        setDragOffset({ x: dx, y: dy * 0.4 }); 
-       if (Math.abs(dx) > SWIPE_THRESHOLD && !hasCrossedThreshold) {
+       if (Math.abs(dx) > COMMIT_DISTANCE && !hasCrossedThreshold) {
          triggerHaptic('selection');
          setHasCrossedThreshold(true);
-       } else if (Math.abs(dx) < SWIPE_THRESHOLD && hasCrossedThreshold) {
+       } else if (Math.abs(dx) < COMMIT_DISTANCE && hasCrossedThreshold) {
          setHasCrossedThreshold(false);
          triggerHaptic('light');
        }
@@ -161,7 +166,9 @@ export const PlaceCard: React.FC<PlaceCardProps> = ({
         setIsScrolling(false);
         return;
     }
-    if (Math.abs(dragOffset.x) > SWIPE_THRESHOLD) {
+    const elapsed = Date.now() - dragStartTimeRef.current;
+    const velocityX = elapsed > 0 ? Math.abs(dragOffset.x) / elapsed : 0;
+    if (Math.abs(dragOffset.x) > COMMIT_DISTANCE || velocityX >= COMMIT_VELOCITY) {
       triggerExit(dragOffset.x > 0 ? 'right' : 'left');
     } else {
       triggerHaptic('light'); 
@@ -200,10 +207,12 @@ export const PlaceCard: React.FC<PlaceCardProps> = ({
     };
   };
 
-  const swipeProgress = Math.min(Math.abs(dragOffset.x) / SWIPE_THRESHOLD, 1.2);
-  const isOverThreshold = Math.abs(dragOffset.x) > SWIPE_THRESHOLD;
-  const opacityNope = isSwipeMode && dragOffset.x < 0 ? Math.pow(swipeProgress, 2) * 0.5 : 0;
-  const opacityLike = isSwipeMode && dragOffset.x > 0 ? Math.pow(swipeProgress, 2) * 0.5 : 0;
+  const swipeProgress = Math.min(Math.abs(dragOffset.x) / COMMIT_DISTANCE, 1.2);
+  const isOverThreshold = Math.abs(dragOffset.x) > COMMIT_DISTANCE;
+  // Indicator fades in between INDICATOR_START and INDICATOR_FULL, then holds
+  const indicatorOpacity = Math.min(Math.max(0, (Math.abs(dragOffset.x) - INDICATOR_START) / (INDICATOR_FULL - INDICATOR_START)), 1);
+  const opacityNope = isSwipeMode && dragOffset.x < 0 ? indicatorOpacity * 0.5 : 0;
+  const opacityLike = isSwipeMode && dragOffset.x > 0 ? indicatorOpacity * 0.5 : 0;
 
   const handleOpenMap = () => {
     if (place.coordinates) {
