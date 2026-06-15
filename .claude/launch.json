@@ -2,7 +2,7 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "kesif-dev",
+      "name": "swapvoyage-dev",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev"],
       "cwd": "/Users/ihsan/Desktop/Product Projects/SwapVoyage",

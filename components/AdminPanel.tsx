@@ -37,6 +37,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, onDbUpd
   const [view, setView] = useState<AdminView>('LOGIN');
   const [places, setPlaces] = useState<Place[]>([]);
   const [editingPlace, setEditingPlace] = useState<Place>(emptyPlace);
+  const [loginError, setLoginError] = useState<string | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -58,6 +60,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, onDbUpd
   };
 
   const handleLogin = async () => {
+    setLoginError(null);
     try {
       const provider = new GoogleAuthProvider();
       await signInWithPopup(auth, provider);
@@ -65,7 +68,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, onDbUpd
       refreshList();
     } catch (e) {
       console.error(e);
-      alert('Giriş başarısız oldu.');
+      setLoginError('Giriş başarısız oldu. Lütfen tekrar dene.');
     }
   };
   
@@ -85,11 +88,15 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, onDbUpd
   };
 
   const handleDelete = async (id: string) => {
-    if (confirm('Silmek istediğine emin misin?')) {
-      await deleteGlobalPlace(id);
-      refreshList();
-      onDbUpdate?.();
-    }
+    setDeleteConfirmId(id);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteConfirmId) return;
+    await deleteGlobalPlace(deleteConfirmId);
+    setDeleteConfirmId(null);
+    refreshList();
+    onDbUpdate?.();
   };
 
   const handlePreview = () => {
@@ -122,6 +129,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, onDbUpd
         <h2 className="text-3xl font-serif font-bold text-white mb-2">Admin Panel</h2>
         <p className="text-white/40 text-sm mb-8">İçerik Yönetim Sistemi</p>
         <div className="w-full max-w-xs space-y-4">
+           {loginError && (
+             <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-xs font-bold text-center">
+               {loginError}
+             </div>
+           )}
            <button onClick={handleLogin} className="w-full py-4 bg-white text-black font-bold rounded-xl active:scale-95 transition-transform flex items-center justify-center gap-3">
              <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" className="w-5 h-5" alt="Google" />
              Google ile Giriş Yap
@@ -232,6 +244,19 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, onDbUpd
           <div className="absolute bottom-6 right-6">
              <button onClick={handleCreateNew} className="w-14 h-14 bg-brand-purple text-black rounded-full shadow-2xl flex items-center justify-center text-3xl font-light pb-1 hover:scale-105 transition-transform">+</button>
           </div>
+          {/* Inline delete confirmation */}
+          {deleteConfirmId && (
+            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm z-10 flex items-center justify-center p-6">
+              <div className="bg-[#1c1c1e] border border-white/10 rounded-3xl w-full max-w-xs p-6 space-y-4 text-center">
+                <p className="text-white font-bold">Silmek istediğine emin misin?</p>
+                <p className="text-white/40 text-xs">Bu işlem geri alınamaz.</p>
+                <div className="flex gap-3 pt-2">
+                  <button onClick={() => setDeleteConfirmId(null)} className="flex-1 py-3 bg-white/5 text-white/60 rounded-xl text-xs font-bold">İptal</button>
+                  <button onClick={confirmDelete} className="flex-1 py-3 bg-red-500 text-white rounded-xl text-xs font-black">Sil</button>
+                </div>
+              </div>
+            </div>
+          )}
         </>
       )}
 

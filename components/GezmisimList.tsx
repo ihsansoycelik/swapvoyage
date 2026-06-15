@@ -45,8 +45,8 @@ export const GezmisimList: React.FC<GezmisimListProps> = ({ visited, onShowMap }
             <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
         </div>
-        <p className="font-serif text-lg italic text-white">Henüz hiçbir yeri gezmediniz.</p>
-        <p className="text-[10px] text-white/40 mt-2 uppercase tracking-widest leading-loose">
+        <p className="font-serif text-lg italic text-gray-900 dark:text-white">Henüz hiçbir yeri gezmediniz.</p>
+        <p className="text-[10px] text-gray-500 dark:text-white/40 mt-2 uppercase tracking-widest leading-loose">
           Listemden bir mekana<br/>uzun basıp "Gezdim!" de.
         </p>
       </div>

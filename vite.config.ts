@@ -15,7 +15,7 @@ export default defineConfig(({ mode }) => {
         react(),
         VitePWA({
           registerType: 'autoUpdate',
-          includeAssets: ['icon.svg'],
+          includeAssets: ['icon.svg', 'icon-192.png', 'icon-512.png'],
           manifest: {
             name: 'SwapVoyage',
             short_name: 'SwapVoyage',
@@ -25,10 +25,22 @@ export default defineConfig(({ mode }) => {
             display: 'standalone',
             icons: [
               {
+                src: 'icon-192.png',
+                sizes: '192x192',
+                type: 'image/png',
+                purpose: 'any'
+              },
+              {
+                src: 'icon-512.png',
+                sizes: '512x512',
+                type: 'image/png',
+                purpose: 'maskable'
+              },
+              {
                 src: 'icon.svg',
                 sizes: '192x192 512x512',
                 type: 'image/svg+xml',
-                purpose: 'any maskable'
+                purpose: 'any'
               }
             ]
           },

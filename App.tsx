@@ -20,7 +20,7 @@ const SettingsModal = lazy(() => import('./components/SettingsModal').then(m => 
 const AdminPanel = lazy(() => import('./components/AdminPanel').then(m => ({ default: m.AdminPanel })));
 const NotificationPrompt = lazy(() => import('./components/NotificationPrompt').then(m => ({ default: m.NotificationPrompt })));
 
-const ADMIN_EMAIL = 'soycelikihsan@gmail.com';
+const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL as string;
 
 const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
   const R = 6371;
@@ -58,6 +58,8 @@ const App = () => {
   const [mapFocusPlace, setMapFocusPlace] = useState<Place | null>(null);
   const [visitedSnackbar, setVisitedSnackbar] = useState<Place | null>(null);
   const visitedSnackbarTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Apply dark mode to DOM and persist
   useEffect(() => {
@@ -273,20 +275,28 @@ const App = () => {
     await removeFromVisited(place.id);
   }, [visitedSnackbar]);
 
+  const showToast = useCallback((message: string) => {
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    setToastMessage(message);
+    toastTimerRef.current = setTimeout(() => {
+      setToastMessage(null);
+      toastTimerRef.current = null;
+    }, 3000);
+  }, []);
+
   const handleOpenNotifications = useCallback(() => {
     const hasPrompted = localStorage.getItem('swapvoyage_notif_prompted');
     if (!hasPrompted) {
       setShowNotificationPrompt(true);
     } else if (Notification.permission === 'default') {
-      // Already dismissed before but hasn't granted — offer again
       localStorage.removeItem('swapvoyage_notif_prompted');
       setShowNotificationPrompt(true);
     } else if (Notification.permission === 'granted') {
-      alert('Bildirimler zaten aktif ✓');
+      showToast('Bildirimler zaten aktif ✓');
     } else {
-      alert('Bildirim izni tarayıcı ayarlarından etkinleştirilebilir.');
+      showToast('Bildirim izni tarayıcı ayarlarından etkinleştirilebilir.');
     }
-  }, []);
+  }, [showToast]);
 
   const handleSignOut = useCallback(async () => {
     try {
@@ -421,14 +431,13 @@ const App = () => {
     }
   };
 
-  if (showSplash) {
-    return <SplashScreen onFinish={() => setShowSplash(false)} />;
-  }
-
   return (
     <div className="flex items-center justify-center w-full h-full">
       {/* Mobile Frame Container */}
       <div className="w-full h-full md:w-[414px] md:h-[896px] md:max-h-[95vh] aurora-bg flex flex-col overflow-hidden shadow-[0_0_100px_rgba(0,0,0,0.8)] relative transition-colors duration-500 text-brand-black dark:text-white md:rounded-[40px] md:border-[8px] md:border-[#1a1a1a]">
+
+        {/* Splash Overlay — renders on top while app initializes in background */}
+        {showSplash && <SplashScreen onFinish={() => setShowSplash(false)} />}
 
         {/* Onboarding Overlay */}
         <Suspense fallback={null}>
@@ -501,12 +510,23 @@ const App = () => {
 
         {/* Content Area */}
         <main className="flex-1 relative overflow-hidden h-full">
-          {renderContent()}
+          <div key={view} className="absolute inset-0 overflow-hidden animate-in fade-in duration-200">
+            {renderContent()}
+          </div>
           <Navigation currentView={view} setView={setView} wishlistCount={wishlist.length} />
+
+          {/* Generic Toast */}
+          {toastMessage && (
+            <div className="absolute top-6 left-4 right-4 z-[90] animate-in slide-in-from-top-4 fade-in duration-300 pointer-events-none flex justify-center">
+              <div className="bg-zinc-900/95 backdrop-blur-xl border border-white/10 rounded-full px-5 py-2.5 shadow-2xl">
+                <p className="text-white text-xs font-bold">{toastMessage}</p>
+              </div>
+            </div>
+          )}
 
           {/* Visited Undo Snackbar */}
           {visitedSnackbar && (
-            <div className="absolute bottom-24 left-4 right-4 z-[75] animate-in slide-in-from-bottom-4 fade-in duration-300 pointer-events-auto">
+            <div className="absolute bottom-28 left-4 right-4 z-[80] animate-in slide-in-from-bottom-4 fade-in duration-300 pointer-events-auto">
               <div className="bg-zinc-900/95 backdrop-blur-xl border border-white/10 rounded-2xl px-4 py-3 flex items-center gap-3 shadow-2xl">
                 <div className="w-8 h-8 flex-shrink-0 bg-emerald-500/20 rounded-full flex items-center justify-center">
                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#10b981" className="w-4 h-4">

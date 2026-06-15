@@ -6,7 +6,7 @@ import localforage from "localforage";
 
 const LOCAL_STORAGE_KEY = 'swapvoyage_local_db_v1';
 const WISHLIST_KEY = 'swapvoyage_wishlist_v1';
-const ADMIN_EMAIL = 'soycelikihsan@gmail.com';
+const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL as string;
 
 // Initialize localforage
 localforage.config({

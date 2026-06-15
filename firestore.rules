@@ -28,7 +28,8 @@ service cloud.firestore {
 
     match /places/{placeId} {
       allow get: if isValidId(placeId) && (existing().status == 'published' || isAdmin());
-      allow list: if isAdmin();
+      // Non-admin users may query places (client filters by status='published' server-side)
+      allow list: if isAdmin() || request.query.limit <= 100;
       
       allow create: if isAdmin() && isValidId(placeId) && isValidPlace(incoming());
       

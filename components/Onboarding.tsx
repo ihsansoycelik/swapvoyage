@@ -149,7 +149,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
           <div className="pt-6 pb-4">
             <button 
               onClick={() => onComplete(selectedInterests)}
-              className={`w-full py-5 bg-brand-purple text-black font-black uppercase tracking-widest text-xs rounded-2xl shadow-2xl transition-all duration-300 ${selectedInterests.length > 0 ? 'opacity-100 active:scale-95' : 'opacity-50 grayscale cursor-not-allowed'}`}
+              className={`w-full py-5 bg-brand-purple text-white font-black uppercase tracking-widest text-xs rounded-2xl shadow-2xl transition-all duration-300 ${selectedInterests.length > 0 ? 'opacity-100 active:scale-95' : 'opacity-50 grayscale cursor-not-allowed'}`}
               disabled={selectedInterests.length === 0}
             >
               Hadi Başlayalım

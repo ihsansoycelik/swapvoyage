@@ -221,7 +221,8 @@ export const PlaceCard: React.FC<PlaceCardProps> = ({
   };
 
   return (
-    <div 
+    <div
+      data-swipe-card
       className={`flex flex-col h-full bg-black relative overflow-hidden shadow-[0_35px_60px_-15px_rgba(0,0,0,0.6)] ring-1 ring-white/10`}
       style={getCardStyle()}
       onTouchStart={onTouchStart}

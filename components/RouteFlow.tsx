@@ -19,6 +19,7 @@ export const RouteFlow: React.FC<RouteFlowProps> = ({ isOpen, onClose, places, c
   const [itinerary, setItinerary] = useState<DailyItinerary[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [shouldRender, setShouldRender] = useState(isOpen);
+  const [copiedBanner, setCopiedBanner] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -75,8 +76,9 @@ export const RouteFlow: React.FC<RouteFlowProps> = ({ isOpen, onClose, places, c
     if (navigator.share) {
       try { await navigator.share({ title: `${cityName} Rotası`, text }); } catch (e) {}
     } else {
-      navigator.clipboard.writeText(text);
-      alert('Rota panoya kopyalandı!');
+      await navigator.clipboard.writeText(text);
+      setCopiedBanner(true);
+      setTimeout(() => setCopiedBanner(false), 2500);
     }
   };
 
@@ -219,6 +221,11 @@ export const RouteFlow: React.FC<RouteFlowProps> = ({ isOpen, onClose, places, c
 
           {step === 'PREVIEW' && (
             <div className="space-y-6">
+               {copiedBanner && (
+                 <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl px-4 py-2.5 text-center text-emerald-400 text-xs font-bold animate-in fade-in duration-200">
+                   Rota panoya kopyalandı ✓
+                 </div>
+               )}
                <div className="space-y-6 relative">
                   <div className="absolute left-[19px] top-4 bottom-4 w-0.5 bg-white/10" />
                   {itinerary.map((dayItem) => (

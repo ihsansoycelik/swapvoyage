@@ -39,7 +39,7 @@ export const SkeletonCard = () => {
 
         {/* Action Buttons — matches GEÇ / KAYDET layout */}
         <div className="flex items-center gap-3 h-14">
-          <div className="flex-1 h-full bg-white/8 rounded-2xl border border-white/10 animate-pulse" />
+          <div className="flex-1 h-full bg-white/10 rounded-2xl border border-white/10 animate-pulse" />
           <div className="flex-1 h-full bg-white/25 rounded-2xl animate-pulse" />
         </div>
       </div>

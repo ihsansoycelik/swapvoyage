@@ -25,6 +25,19 @@ html {
     radial-gradient(at 100% 0%, hsla(0, 0%, 10%, 1) 0, transparent 50%);
 }
 
+/* Swipe card — GPU layer hint, smooth dragging */
+[data-swipe-card] {
+  will-change: transform;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+/* Touch interactions — disable callout/selection on swipe areas */
+[data-swipe-card] img {
+  -webkit-user-drag: none;
+  -webkit-touch-callout: none;
+}
+
 /* Masonry grid layout */
 .masonry-grid {
   column-count: 2;
@@ -34,4 +47,9 @@ html {
 .masonry-item {
   break-inside: avoid;
   margin-bottom: 12px;
+}
+
+/* Smooth view transitions */
+.animate-in {
+  animation-fill-mode: both;
 }

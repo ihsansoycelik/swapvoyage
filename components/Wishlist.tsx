@@ -3,7 +3,7 @@ import React, { useState, useMemo } from 'react';
 import { Place } from '../types';
 import { PlaceCard } from './PlaceCard';
 import { RouteFlow } from './RouteFlow';
-import { analytics } from '../services/analyticsService';
+import { logAnalyticsEvent } from '../services/analyticsService';
 import { getImageUrl, GENERIC_FALLBACK_IMAGE } from '../services/imageService';
 
 interface WishlistProps {
@@ -71,7 +71,7 @@ export const Wishlist: React.FC<WishlistProps> = ({ items, onRemove, onMarkVisit
 
   const handleStartRouteFlow = (city: string, cityItems: Place[]) => {
     if (cityItems.length === 0) return;
-    analytics.logEvent('route_generated', { placeCount: cityItems.length });
+    logAnalyticsEvent('route_generated', { placeCount: cityItems.length });
     
     // Filter out places without coordinates for safety
     const validItems = cityItems.filter(p => p.coordinates);
@@ -87,7 +87,8 @@ export const Wishlist: React.FC<WishlistProps> = ({ items, onRemove, onMarkVisit
   };
 
   return (
-    <div className="bg-transparent min-h-full pb-32 pt-6 flex flex-col h-full relative overflow-y-auto no-scrollbar">
+    <>
+    <div className="bg-transparent min-h-full pb-32 pt-6 flex flex-col h-full overflow-y-auto no-scrollbar">
       {/* No-coordinates toast */}
       {noCoordsBanner && (
         <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[300] px-4 py-2 bg-red-500/90 backdrop-blur-sm text-white text-xs font-bold rounded-full shadow-lg animate-fade-in">
@@ -149,7 +150,7 @@ export const Wishlist: React.FC<WishlistProps> = ({ items, onRemove, onMarkVisit
                 {groupedItems[city].map((place) => (
                   <div 
                     key={place.id} 
-                    className="relative group cursor-pointer animate-in fade-in slide-in-from-bottom-2 duration-500 select-none"
+                    className="relative group cursor-pointer select-none"
                     onClick={(e) => handleCardClick(place, e)}
                     onMouseDown={() => startPress(place)}
                     onMouseUp={(e) => endPress(place, e)}
@@ -203,54 +204,57 @@ export const Wishlist: React.FC<WishlistProps> = ({ items, onRemove, onMarkVisit
         </div>
       )}
 
-      {selectedPlace && (
-        <div className="absolute inset-0 z-[120] animate-in slide-in-from-bottom-10 fade-in duration-300">
-          <PlaceCard 
-            place={selectedPlace} 
-            mode="VIEW" 
-            onClose={() => setSelectedPlace(null)} 
-            onRemove={() => { onRemove(selectedPlace.id); setSelectedPlace(null); }}
-            onMarkVisited={() => { onMarkVisited(selectedPlace); setSelectedPlace(null); }}
-          />
-        </div>
-      )}
+    </div>
 
-      {/* Long-press Overlay Menu */}
-      {longPressActive && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[200] flex items-center justify-center p-6 animate-in fade-in duration-300" onClick={() => setLongPressActive(null)}>
-          <div className="bg-[#1c1c1e] border border-white/10 rounded-3xl w-full max-w-xs overflow-hidden shadow-2xl p-5 text-center space-y-4 animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
-            <h4 className="font-serif text-lg font-bold text-white leading-snug">{longPressActive.name}</h4>
-            <p className="text-[9px] text-zinc-500 font-bold uppercase tracking-[0.2em]">{longPressActive.location}</p>
-            
-            <div className="flex flex-col gap-2 pt-2">
-              <button 
-                onClick={() => {
-                  onMarkVisited(longPressActive);
-                  setLongPressActive(null);
-                }}
-                className="w-full py-3 bg-brand-purple hover:bg-brand-purple/90 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all active:scale-95 flex items-center justify-center gap-1.5"
-              >
-                Gezdim! ✓
-              </button>
-              <button 
-                onClick={() => {
-                  onRemove(longPressActive.id);
-                  setLongPressActive(null);
-                }}
-                className="w-full py-3 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-xl text-xs font-black uppercase tracking-wider transition-all active:scale-95"
-              >
-                Listeden Çıkar
-              </button>
-              <button 
-                onClick={() => setLongPressActive(null)}
-                className="w-full py-3 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-xl text-xs font-bold transition-all active:scale-95"
-              >
-                Vazgeç
-              </button>
-            </div>
+    {/* Place detail overlay — outside scroll container so scroll offset doesn't shift it */}
+    {selectedPlace && (
+      <div className="absolute inset-0 z-[120] animate-in slide-in-from-bottom-10 fade-in duration-300">
+        <PlaceCard
+          place={selectedPlace}
+          mode="VIEW"
+          onClose={() => setSelectedPlace(null)}
+          onRemove={() => { onRemove(selectedPlace.id); setSelectedPlace(null); }}
+          onMarkVisited={() => { onMarkVisited(selectedPlace); setSelectedPlace(null); }}
+        />
+      </div>
+    )}
+
+    {/* Long-press Overlay Menu */}
+    {longPressActive && (
+      <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[200] flex items-center justify-center p-6 animate-in fade-in duration-300" onClick={() => setLongPressActive(null)}>
+        <div className="bg-[#1c1c1e] border border-white/10 rounded-3xl w-full max-w-xs overflow-hidden shadow-2xl p-5 text-center space-y-4 animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
+          <h4 className="font-serif text-lg font-bold text-white leading-snug">{longPressActive.name}</h4>
+          <p className="text-[9px] text-zinc-500 font-bold uppercase tracking-[0.2em]">{longPressActive.location}</p>
+
+          <div className="flex flex-col gap-2 pt-2">
+            <button
+              onClick={() => {
+                onMarkVisited(longPressActive);
+                setLongPressActive(null);
+              }}
+              className="w-full py-3 bg-brand-purple hover:bg-brand-purple/90 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all active:scale-95 flex items-center justify-center gap-1.5"
+            >
+              Gezdim! ✓
+            </button>
+            <button
+              onClick={() => {
+                onRemove(longPressActive.id);
+                setLongPressActive(null);
+              }}
+              className="w-full py-3 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-xl text-xs font-black uppercase tracking-wider transition-all active:scale-95"
+            >
+              Listeden Çıkar
+            </button>
+            <button
+              onClick={() => setLongPressActive(null)}
+              className="w-full py-3 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-xl text-xs font-bold transition-all active:scale-95"
+            >
+              Vazgeç
+            </button>
           </div>
         </div>
-      )}
-    </div>
+      </div>
+    )}
+    </>
   );
 };
